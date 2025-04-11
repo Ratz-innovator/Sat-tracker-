@@ -1,0 +1,3 @@
+[submodule "open-source-satellite-tracker"]
+    path = open-source-satellite-tracker
+    url = https://github.com/Ratz-innovator/Sat-tracker-.git 
