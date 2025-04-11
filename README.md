@@ -2,6 +2,10 @@
 
 A real-time satellite tracking application that visualizes satellites in orbit using 3D Earth representation.
 
+## About the Creator
+
+This project was created by Ratnesh Kumar, a self-taught developer who learned to code through personal dedication and passion for space technology. Building this satellite tracker represents the culmination of independent learning and practical application of modern web technologies to create a useful tool for space enthusiasts.
+
 ## Features
 
 - Real-time tracking of satellites using TLE data
