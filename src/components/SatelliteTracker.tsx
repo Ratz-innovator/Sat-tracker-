@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Canvas, useFrame } from "@react-three/fiber"
 import { OrbitControls, Stars, Html } from "@react-three/drei"
 import { Badge } from "@/components/ui/badge"
@@ -27,14 +27,8 @@ import {
   User,
 } from "lucide-react"
 
-// Sample satellite data
-const satellites = [
-  { id: 1, name: "ISS", type: "Space Station", lat: 40, lng: -75, altitude: 408 },
-  { id: 2, name: "Starlink-1234", type: "Starlink", lat: 35, lng: 139, altitude: 550 },
-  { id: 3, name: "Hubble", type: "Telescope", lat: -33, lng: 18, altitude: 540 },
-  { id: 4, name: "NOAA-19", type: "Weather", lat: 51, lng: 10, altitude: 870 },
-  { id: 5, name: "Debris-A", type: "Debris", lat: 37, lng: -122, altitude: 780 },
-]
+// Import sample satellite data function
+import { generateSampleSatellites } from "@/lib/satelliteData"
 
 function Earth(props) {
   const earthRef = useRef()
@@ -86,6 +80,9 @@ function SatelliteMarker({ lat, lng, altitude, name, selected }) {
 export default function SatelliteTracker() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [selectedSatellite, setSelectedSatellite] = useState(null)
+  const [satellites, setSatellites] = useState([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [altitudeRange, setAltitudeRange] = useState([0, 1000])
   const [filters, setFilters] = useState({
     starlink: true,
     iss: true,
@@ -93,11 +90,27 @@ export default function SatelliteTracker() {
     other: true,
   })
 
+  // Generate satellites on the client side only, after initial render
+  useEffect(() => {
+    setSatellites(generateSampleSatellites(100));
+  }, []);
+
   const toggleFilter = (filter) => {
     setFilters((prev) => ({ ...prev, [filter]: !prev[filter] }))
   }
 
   const filteredSatellites = satellites.filter((sat) => {
+    // Filter by search query
+    if (searchQuery && !sat.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    // Filter by altitude range
+    if (sat.altitude < altitudeRange[0] || sat.altitude > altitudeRange[1]) {
+      return false;
+    }
+    
+    // Filter by satellite type
     if (sat.type === "Starlink" && !filters.starlink) return false
     if (sat.type === "Space Station" && !filters.iss) return false
     if (sat.type === "Debris" && !filters.debris) return false
@@ -126,6 +139,8 @@ export default function SatelliteTracker() {
               <Input
                 type="search"
                 placeholder="Search satellites..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-[200px] lg:w-[300px] bg-blue-950/20 border-blue-900/50 pl-9 text-sm"
               />
             </div>
@@ -233,11 +248,17 @@ export default function SatelliteTracker() {
               </h2>
               <p className="text-xs text-blue-300/70 mt-1 mb-4">Filter satellites by altitude (km)</p>
 
-              <Slider defaultValue={[0, 1000]} max={1000} step={10} className="my-6" />
+              <Slider 
+                value={altitudeRange} 
+                onValueChange={setAltitudeRange} 
+                max={25000} 
+                step={100} 
+                className="my-6" 
+              />
 
               <div className="flex justify-between text-xs text-blue-300/70">
-                <span>0 km</span>
-                <span>1000 km</span>
+                <span>{altitudeRange[0]} km</span>
+                <span>{altitudeRange[1]} km</span>
               </div>
             </div>
 
@@ -245,29 +266,33 @@ export default function SatelliteTracker() {
 
             <div>
               <h2 className="text-lg font-semibold text-blue-400 mb-3">Active Satellites</h2>
-              <div className="space-y-2 max-h-60 overflow-auto pr-2">
-                {filteredSatellites.map((sat) => (
-                  <div
-                    key={sat.id}
-                    className={`p-2 rounded cursor-pointer transition-colors ${
-                      selectedSatellite === sat.id
-                        ? "bg-blue-900/40 border border-blue-800"
-                        : "hover:bg-blue-950/40 border border-transparent"
-                    }`}
-                    onClick={() => setSelectedSatellite(sat.id === selectedSatellite ? null : sat.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-medium text-blue-300">{sat.name}</div>
-                        <div className="text-xs text-blue-400/70">{sat.type}</div>
+              {satellites.length > 0 ? (
+                <div className="space-y-2 max-h-60 overflow-auto pr-2">
+                  {filteredSatellites.map((sat) => (
+                    <div
+                      key={sat.id}
+                      className={`p-2 rounded cursor-pointer transition-colors ${
+                        selectedSatellite === sat.id
+                          ? "bg-blue-900/40 border border-blue-800"
+                          : "hover:bg-blue-950/40 border border-transparent"
+                      }`}
+                      onClick={() => setSelectedSatellite(sat.id === selectedSatellite ? null : sat.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-blue-300">{sat.name}</div>
+                          <div className="text-xs text-blue-400/70">{sat.type}</div>
+                        </div>
+                        <Badge variant="outline" className="text-xs border-blue-900/60 bg-blue-950/30 text-blue-400">
+                          {sat.altitude} km
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className="text-xs border-blue-900/60 bg-blue-950/30 text-blue-400">
-                        {sat.altitude} km
-                      </Badge>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-blue-400/70 text-sm">Loading satellites...</div>
+              )}
             </div>
 
             <div className="mt-auto pt-6">
