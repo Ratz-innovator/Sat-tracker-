@@ -1,11 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
-import * as Cesium from 'cesium';
-// Import types for Cesium - adjust path if necessary based on your setup or types installation
-// If using @types/cesium, it might be implicitly available or require a different import
-// import type { Viewer } from 'cesium'; 
-import 'cesium/Build/Cesium/Widgets/widgets.css';
+import dynamic from 'next/dynamic';
 import type { TleData } from '@/app/api/tle/route';
 import { 
   parseTle, 
@@ -20,56 +16,82 @@ interface CesiumViewerProps {
   tleData: TleData[] | null;
 }
 
+// Create a component that will only be loaded on the client side
 const CesiumViewer: React.FC<CesiumViewerProps> = ({ tleData }: CesiumViewerProps) => {
   // Refs for DOM container and Cesium viewer
   const cesiumContainer = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<Cesium.Viewer | null>(null);
+  const viewerRef = useRef<any | null>(null);
   
   // Ref to store and track satellite entities
-  const satelliteEntitiesRef = useRef<Map<string, Cesium.Entity>>(new Map());
+  const satelliteEntitiesRef = useRef<Map<string, any>>(new Map());
   
   // Ref to store parsed satellite records for propagation
   const satelliteRecordsRef = useRef<Map<string, any>>(new Map());
   
   // State to track if satellites have been loaded
   const [satellitesLoaded, setSatellitesLoaded] = useState<boolean>(false);
+  // State to track if Cesium is loaded
+  const [cesiumLoaded, setCesiumLoaded] = useState<boolean>(false);
+  // Store Cesium namespace
+  const [Cesium, setCesium] = useState<any>(null);
 
-  // Initialize Cesium viewer
+  // Load Cesium dynamically only on client side
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
 
-    if (cesiumContainer.current && !viewerRef.current) {
-      // Set the base URL for Cesium assets
-      (window as any).CESIUM_BASE_URL = process.env.NEXT_PUBLIC_CESIUM_BASE_URL || '/cesium/';
+    const loadCesium = async () => {
+      try {
+        // Dynamically import Cesium
+        const cesiumModule = await import('cesium');
+        // Also import the CSS
+        await import('cesium/Build/Cesium/Widgets/widgets.css');
+        // Store Cesium namespace
+        setCesium(cesiumModule);
+        setCesiumLoaded(true);
+      } catch (error) {
+        console.error('Failed to load Cesium:', error);
+      }
+    };
 
-      // Initialize the Cesium viewer
-      const viewer = new Cesium.Viewer(cesiumContainer.current, {
-        timeline: false,
-        animation: false,
-        baseLayerPicker: false,
-        fullscreenButton: false,
-        geocoder: false,
-        homeButton: false,
-        infoBox: false,
-        sceneModePicker: false,
-        selectionIndicator: false,
-        navigationHelpButton: false,
-      });
+    loadCesium();
+  }, []);
 
-      // Set up an initial view of Earth
-      viewer.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(0, 0, 25000000), // 25,000 km altitude
-        orientation: {
-          heading: 0,
-          pitch: -Cesium.Math.PI_OVER_TWO, // Looking straight down
-          roll: 0
-        }
-      });
-
-      viewerRef.current = viewer;
+  // Initialize Cesium viewer once Cesium is loaded
+  useEffect(() => {
+    if (!cesiumLoaded || !Cesium || typeof window === 'undefined' || !cesiumContainer.current || viewerRef.current) {
+      return;
     }
+
+    // Set the base URL for Cesium assets
+    window.CESIUM_BASE_URL = process.env.NEXT_PUBLIC_CESIUM_BASE_URL || '/cesium/';
+
+    // Initialize the Cesium viewer
+    const viewer = new Cesium.Viewer(cesiumContainer.current, {
+      timeline: false,
+      animation: false,
+      baseLayerPicker: false,
+      fullscreenButton: false,
+      geocoder: false,
+      homeButton: false,
+      infoBox: false,
+      sceneModePicker: false,
+      selectionIndicator: false,
+      navigationHelpButton: false,
+    });
+
+    // Set up an initial view of Earth
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(0, 0, 25000000), // 25,000 km altitude
+      orientation: {
+        heading: 0,
+        pitch: -Cesium.Math.PI_OVER_TWO, // Looking straight down
+        roll: 0
+      }
+    });
+
+    viewerRef.current = viewer;
 
     return () => {
       // Cleanup when component unmounts
@@ -79,11 +101,11 @@ const CesiumViewer: React.FC<CesiumViewerProps> = ({ tleData }: CesiumViewerProp
         console.log('Cesium Viewer destroyed');
       }
     };
-  }, []);
+  }, [cesiumLoaded, Cesium]);
 
   // Effect to handle TLE data changes and create/update satellite entities
   useEffect(() => {
-    if (!viewerRef.current || !tleData) {
+    if (!viewerRef.current || !tleData || !Cesium) {
       return;
     }
 
@@ -185,11 +207,11 @@ const CesiumViewer: React.FC<CesiumViewerProps> = ({ tleData }: CesiumViewerProp
     // Process initial TLE data
     processTleData();
     
-  }, [tleData, satellitesLoaded]);
+  }, [tleData, satellitesLoaded, Cesium]);
   
   // Effect to set up real-time updates for satellite positions
   useEffect(() => {
-    if (!viewerRef.current || !satellitesLoaded || !tleData || tleData.length === 0) {
+    if (!viewerRef.current || !satellitesLoaded || !tleData || tleData.length === 0 || !Cesium) {
       return;
     }
     
@@ -224,7 +246,7 @@ const CesiumViewer: React.FC<CesiumViewerProps> = ({ tleData }: CesiumViewerProp
     return () => {
       clearInterval(updateInterval);
     };
-  }, [tleData, satellitesLoaded]);
+  }, [tleData, satellitesLoaded, Cesium]);
 
   return (
     <div
@@ -234,4 +256,7 @@ const CesiumViewer: React.FC<CesiumViewerProps> = ({ tleData }: CesiumViewerProp
   );
 };
 
-export default CesiumViewer; 
+// Export a dynamic component with SSR disabled
+export default dynamic(() => Promise.resolve(CesiumViewer), {
+  ssr: false
+}); 

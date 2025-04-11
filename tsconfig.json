@@ -12,6 +12,7 @@
     "isolatedModules": true,
     "jsx": "preserve", // Required for Next.js
     "incremental": true,
+    "downlevelIteration": true, // Enable iteration through Maps/Sets in older JS environments
     
     // --- Key Settings for Module Resolution ---
     "moduleResolution": "bundler", // Recommended modern setting for bundler environments
