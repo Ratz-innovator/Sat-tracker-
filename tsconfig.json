@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    // Base options from create-next-app
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true, // Often helpful with complex libraries like Cesium
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true, // Important for CJS/ESM compatibility
+    "module": "esnext", // Standard for modern JS
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve", // Required for Next.js
+    "incremental": true,
+    
+    // --- Key Settings for Module Resolution ---
+    "moduleResolution": "bundler", // Recommended modern setting for bundler environments
+    "baseUrl": ".", // Crucial for the paths alias below
+    "paths": {
+      "@/*": ["./src/*"] // Default alias mapping
+    },
+    // --- End Key Settings ---
+
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts", 
+    "**/*.ts", 
+    "**/*.tsx", 
+    ".next/types/**/*.ts",
+    // Ensure your config files are included if they contain TS/JS logic
+    "next.config.ts", 
+    "eslint.config.mjs" // Include relevant config files
+  ],
+  "exclude": ["node_modules"]
+} 
